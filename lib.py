@@ -77,9 +77,9 @@ def bitmask_decode(bytes):
     mask_actuator_up = 1 << 0
     mask_actuator_down = 1 << 1
     mask_light = 1 << 2
+
     for i in range(len(bytes[0])):
         # byte 5
-        print()
         activate.append(bool(bytes[5][i] & mask_activate))
         DI_right.append((bool(bytes[5][i] & mask_DI_right) * 100 + 125))
         DI_left.append(bool(bytes[5][i] & mask_DI_left) * 100 + 125)
@@ -154,6 +154,8 @@ def vel_cmnd(df):
         if len(hexlist) == 8:
             if hexlist[-1] == "31":
                 vel_cmnd = int("0x" + hexlist[1] + hexlist[0], base=16)
+                if vel_cmnd > 2**15:
+                    vel_cmnd -= 2**16
                 timevec.append(df.iloc[i]["Time"])
                 speedvec.append(vel_cmnd)
             elif hexlist[-1] == "02":  # quickstop
