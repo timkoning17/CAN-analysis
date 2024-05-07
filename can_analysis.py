@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 # filename = "./logs/raw_values.csv"
-filename = "./logs/raw_values.csv"q
+filename = "./logs/raw_values.csv"
 # filename = "./logs/raw_values_light_overrule.csv"
 # filename = "./logs/statusword-quickstopCorrect.csv"
 df = pd.read_csv(filename)

@@ -54,28 +54,29 @@ def bitmask_decode(bytes):
     winch_down = []
     winch_selector1 = []
     winch_selector2 = []
+
     # byte 5
-    mask_activate = 1 << 7
-    mask_DI_right = 1 << 6
-    mask_DI_left = 1 << 5
-    mask_swing_on = 1 << 4
-    mask_swing_overrule = 1 << 3
-    mask_step_slow = 1 << 2
-    mask_step_fast = 1 << 1
-    mask_pump = 1 << 0
+    mask_activate = 1 << 0
+    mask_DI_left = 1 << 1
+    mask_DI_right = 1 << 2
+    mask_swing_on = 1 << 3
+    mask_swing_overrule = 1 << 4
+    mask_step_slow = 1 << 5
+    mask_step_fast = 1 << 6
+    mask_pump = 1 << 7
 
     # byte 6
-    mask_winch_left = 1 << 7
-    mask_winch_right = 1 << 6
-    mask_winch_up = 1 << 5
-    mask_winch_down = 1 << 4
-    mask_winch_selector1 = 1 << 3
-    mask_winch_selector2 = 1 << 2
+    mask_winch_left = 1 << 0
+    mask_winch_right = 1 << 1
+    mask_winch_up = 1 << 2
+    mask_winch_down = 1 << 3
+    mask_winch_selector1 = 1 << 4
+    mask_winch_selector2 = 1 << 5
 
     # byte 7
-    mask_actuator_up = 1 << 7
-    mask_actuator_down = 1 << 6
-    mask_light = 1 << 5
+    mask_actuator_up = 1 << 0
+    mask_actuator_down = 1 << 1
+    mask_light = 1 << 2
     for i in range(len(bytes[0])):
         # byte 5
         print()
