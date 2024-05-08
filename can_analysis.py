@@ -4,21 +4,13 @@ import lib
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-# filename = "./logs/raw_values.csv"
-# filename = "./logs/raw_values.csv"
-# filename = "./logs/raw_values_light_overrule.csv"
-# filename = "./logs/statusword-quickstopCorrect.csv"
-
-# filename = "./logs/0705/drive.csv"
-# filename = "./logs/0705/light.csv"
-# filename = "./logs/0705/steptimer+swingarm.csv"
-# filename = "./logs/0705/winch_selector.csv"
-# filename = "./logs/0705/swingarm-pump-override.csv"
 filename = "./logs/0705/everything.csv"
 df = pd.read_csv(filename)
 
 ### Data manipulation
-time_zero = datetime.strptime(df["Time (abs)"].iloc[0], "%H:%M:%S.%f").timestamp()
+## TO DO fix windows timestamps
+# zero = datetime.strptime(df["Time (abs)"].iloc[0], "%H:%M:%S.%f").replace(year=2024) # replace the year with current year to avoid OS timestamp errors
+time_zero = datetime.strptime(df["Time (abs)"].iloc[0], "%H:%M:%S.%f").replace(datetime.now().year).timestamp() # replace the year with current year to avoid OS timestamp errors
 time_relative = lib.create_relative_time(df, time_zero)
 df["Time"] = time_relative
 
@@ -31,7 +23,6 @@ ipc_input = df[df["ID (hex)"] == 183]
 ######### extract velocity commands in context of TxPDO
 timevec_r, speedvec_r, quickstop_r, halt_r, cont_r = lib.vel_cmnd(drive_right)
 timevec_l, speedvec_l, quickstop_l, halt_l, cont_l = lib.vel_cmnd(drive_left)
-
 
 # ######### raw stick values
 raw_timestamp, bytes = lib.raw_stick_str_to_hexstr(raw_values)

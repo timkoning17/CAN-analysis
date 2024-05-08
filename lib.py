@@ -172,7 +172,7 @@ def create_relative_time(df, time_zero):
     time_rel = []
     for i in range(len(df)):
         time_rel.append(
-            datetime.strptime(df["Time (abs)"].iloc[i], "%H:%M:%S.%f").timestamp()
+            datetime.strptime(df["Time (abs)"].iloc[i], "%H:%M:%S.%f").replace(datetime.now().year).timestamp()
             - time_zero
         )
     return time_rel
