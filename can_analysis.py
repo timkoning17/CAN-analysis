@@ -4,12 +4,13 @@ import lib
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-filename = "./logs/0705/everything.csv"
+# filename = "./logs/1106/motorright-JStopright.csv"
+# filename = "./logs/1106/JSstop.csv"
+filename = "./logs/1106/motorright-byte2-ak1.csv"
 df = pd.read_csv(filename)
 
 ### Data manipulation
-## TO DO fix windows timestamps
-# zero = datetime.strptime(df["Time (abs)"].iloc[0], "%H:%M:%S.%f").replace(year=2024) # replace the year with current year to avoid OS timestamp errors
+
 time_zero = datetime.strptime(df["Time (abs)"].iloc[0], "%H:%M:%S.%f").replace(datetime.now().year).timestamp() # replace the year with current year to avoid OS timestamp errors
 time_relative = lib.create_relative_time(df, time_zero)
 df["Time"] = time_relative
@@ -24,10 +25,8 @@ ipc_input = df[df["ID (hex)"] == 183]
 timevec_r, speedvec_r, quickstop_r, halt_r, cont_r = lib.vel_cmnd(drive_right)
 timevec_l, speedvec_l, quickstop_l, halt_l, cont_l = lib.vel_cmnd(drive_left)
 
-# ######### raw stick values
+########## raw stick values
 raw_timestamp, bytes = lib.raw_stick_str_to_hexstr(raw_values)
-# print(bytes[5])
-# print("bytes 7 = " + str(bytes[7]))
 raw_left = bytes[0]
 raw_right = bytes[1]
 raw_drive_speed = bytes[2]
@@ -49,6 +48,8 @@ raw_drive_adjust = bytes[4]
     winch_down,
     winch_selector1,
     winch_selector2,
+    left_backwards,
+    right_backwards,
     actuator_up,
     actuator_down,
     light,
@@ -56,6 +57,7 @@ raw_drive_adjust = bytes[4]
 
 plt.figure()  # speed command drive left
 plt.plot(timevec_l, speedvec_l)
+plt.plot(raw_timestamp, DI_left, ".r", markersize=1, label="DI left")
 plt.vlines(quickstop_l, 0, 3000, colors="r")
 plt.vlines(halt_l, 0, 3000, colors="b")
 plt.vlines(cont_l, 0, 3000, colors="k")
@@ -74,6 +76,11 @@ plt.ylabel("Velocity command [RPM]")
 plt.title("Right drive")
 plt.title("Right drive")
 
+if True:
+    plt.figure()
+    plt.plot(raw_timestamp, left_backwards, label='left backwards')
+    plt.plot(raw_timestamp, right_backwards, label='right backwards')
+    plt.legend()
 
 if True:  # byte 2, byte 3, byte 4
     plt.figure()
@@ -101,7 +108,7 @@ if True:
     plt.plot(raw_timestamp, activate, label="activate")
     plt.plot(raw_timestamp, swing_on, ".-", label="swing on")
     plt.plot(raw_timestamp, swing_overrule, label="swing overrule")
-    plt.plot(raw_timestamp, pump, label="pump")
+    plt.plot(raw_timestamp, pump, label="pump") 
     plt.xlabel("Time [s]")
     plt.title("Swing arm, step timer & pump")
     plt.legend()

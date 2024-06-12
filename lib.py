@@ -2,7 +2,6 @@ from dateutil.parser import *
 import pandas as pd
 from datetime import datetime
 
-
 def raw_stick_str_to_hexstr(df):
     byte0 = []
     byte1 = []
@@ -25,14 +24,13 @@ def raw_stick_str_to_hexstr(df):
         )  # bit 0 = activate, 1 = DI joystick left, 2 = DI joystick right, 3 = swing arm on, 4 = swing arm overrule, 5 = step timer slow, 6 = step timer fast, 7 = pump on
         byte6.append(
             int("0x" + hexlist[6], base=16)
-        )  # bit 0 = winch js left, 1 = winch js right, 2 = winch js up, 3 = winch js down, 4 = winch selector 1, 5 = winch selector 2
+        )  # bit 0 = winch js left, 1 = winch js right, 2 = winch js up, 3 = winch js down, 4 = winch selector 1, 5 = winch selector 2, 6 = Left dir backwards, 7 = Right dir backwards
         byte7.append(
             int("0x" + hexlist[7], base=16)
         )  # bit 0 = actuator up, bit 1 = actuator down, bit 2 = light
         timestamp.append(df.iloc[i]["Time"])
     bytes = [byte0, byte1, byte2, byte3, byte4, byte5, byte6, byte7]
     return timestamp, bytes
-
 
 def bitmask_decode(bytes):
     activate = []
@@ -54,6 +52,8 @@ def bitmask_decode(bytes):
     winch_down = []
     winch_selector1 = []
     winch_selector2 = []
+    left_backwards = []
+    right_backwards = []
 
     # byte 5
     mask_activate = 1 << 0
@@ -72,6 +72,8 @@ def bitmask_decode(bytes):
     mask_winch_down = 1 << 3
     mask_winch_selector1 = 1 << 4
     mask_winch_selector2 = 1 << 5
+    mask_left_backwards = 1 <<6
+    mask_right_backwards = 1<<7
 
     # byte 7
     mask_actuator_up = 1 << 0
@@ -96,6 +98,8 @@ def bitmask_decode(bytes):
         winch_down.append(bool(bytes[6][i] & mask_winch_down))
         winch_selector1.append(bool(bytes[6][i] & mask_winch_selector1))
         winch_selector2.append(bool(bytes[6][i] & mask_winch_selector2))
+        left_backwards.append(bool(bytes[6][i] & mask_left_backwards))
+        right_backwards.append(bool(bytes[6][i] & mask_right_backwards))
 
         # byte 7
         actuator_up.append(bool(bytes[7][i] & mask_actuator_up))
@@ -119,8 +123,11 @@ def bitmask_decode(bytes):
             winch_down,
             winch_selector1,
             winch_selector2,
+            left_backwards,
+            right_backwards
         ]
         byte7 = [actuator_up, actuator_down, light]
+
     return (
         activate,
         DI_right,
@@ -136,11 +143,12 @@ def bitmask_decode(bytes):
         winch_down,
         winch_selector1,
         winch_selector2,
+        left_backwards,
+        right_backwards,
         actuator_up,
         actuator_down,
         light,
     )
-
 
 def vel_cmnd(df):
     timevec = []
@@ -164,9 +172,8 @@ def vel_cmnd(df):
                 halt.append(df.iloc[i]["Time"])
             elif hexlist[-1] == "04":  # continue
                 cont.append(df.iloc[i]["Time"])
-        # print(vel_cmnd)
+    
     return timevec, speedvec, quickstop, halt, cont
-
 
 def create_relative_time(df, time_zero):
     time_rel = []
