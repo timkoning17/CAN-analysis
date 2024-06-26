@@ -175,6 +175,45 @@ def vel_cmnd(df):
     
     return timevec, speedvec, quickstop, halt, cont
 
+def speed_feedback(df):
+    timevec = []
+    feedbackvec = []
+
+    for i in range(df.shape[0]):
+        hexlist = df.iloc[i]["Data (hex)"].split()
+        if len(hexlist) == 2:
+            feedback = int("0x" + hexlist[1] + hexlist [0], base = 16)
+            if feedback > 2**15:
+                feedback -= 2**16
+            timevec.append(df.iloc[i]["Time"])
+            feedbackvec.append(feedback)
+            # print(df.iloc[i]["Time"],feedback)
+    return timevec,feedbackvec      
+
+def encoder_readout(df):
+    timevec=[]
+    encodervec=[]
+
+    for i in range(df.shape[0]):
+        hexlist = df.iloc[i]["Data (hex)"].split()
+        if len(hexlist) ==4:
+            encoder= int("0x"+hexlist[3]+hexlist[2]+hexlist[1]+hexlist[0],base=16)
+            timevec.append(df.iloc[i]["Time"])
+            encodervec.append(encoder)
+    return timevec,encodervec
+
+def compute_encoder_speed(timevec,encodervec):
+    encoderspeedvec = []
+    dtvec = []
+
+    for i in range(len(timevec)-1):
+        dt = timevec[i+1]-timevec[i]
+        dtvec.append(dt)
+        dx = (encodervec[i+1]-encodervec[i])*(60/3600) #rpm
+        encoderspeed=dx/dt
+        encoderspeedvec.append(encoderspeed)
+    return encoderspeedvec, dtvec    
+
 def create_relative_time(df, time_zero):
     time_rel = []
     for i in range(len(df)):
