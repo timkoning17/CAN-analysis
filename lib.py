@@ -2,6 +2,7 @@ from dateutil.parser import *
 import pandas as pd
 from datetime import datetime
 
+
 def raw_stick_str_to_hexstr(df):
     byte0 = []
     byte1 = []
@@ -28,9 +29,10 @@ def raw_stick_str_to_hexstr(df):
         byte7.append(
             int("0x" + hexlist[7], base=16)
         )  # bit 0 = actuator up, bit 1 = actuator down, bit 2 = light
-        timestamp.append(df.iloc[i]["Time"])
+        timestamp.append(df.iloc[i]["Time (rel)"])
     bytes = [byte0, byte1, byte2, byte3, byte4, byte5, byte6, byte7]
     return timestamp, bytes
+
 
 def bitmask_decode(bytes):
     activate = []
@@ -72,8 +74,8 @@ def bitmask_decode(bytes):
     mask_winch_down = 1 << 3
     mask_winch_selector1 = 1 << 4
     mask_winch_selector2 = 1 << 5
-    mask_left_backwards = 1 <<6
-    mask_right_backwards = 1<<7
+    mask_left_backwards = 1 << 6
+    mask_right_backwards = 1 << 7
 
     # byte 7
     mask_actuator_up = 1 << 0
@@ -124,7 +126,7 @@ def bitmask_decode(bytes):
             winch_selector1,
             winch_selector2,
             left_backwards,
-            right_backwards
+            right_backwards,
         ]
         byte7 = [actuator_up, actuator_down, light]
 
@@ -150,6 +152,7 @@ def bitmask_decode(bytes):
         light,
     )
 
+
 def vel_cmnd(df):
     timevec = []
     speedvec = []
@@ -164,16 +167,17 @@ def vel_cmnd(df):
                 vel_cmnd = int("0x" + hexlist[1] + hexlist[0], base=16)
                 if vel_cmnd > 2**15:
                     vel_cmnd -= 2**16
-                timevec.append(df.iloc[i]["Time"])
+                timevec.append(df.iloc[i]["Time (rel)"])
                 speedvec.append(vel_cmnd)
             elif hexlist[-1] == "02":  # quickstop
-                quickstop.append(df.iloc[i]["Time"])
+                quickstop.append(df.iloc[i]["Time (rel)"])
             elif hexlist[-1] == "03":  # halt
-                halt.append(df.iloc[i]["Time"])
+                halt.append(df.iloc[i]["Time (rel)"])
             elif hexlist[-1] == "04":  # continue
-                cont.append(df.iloc[i]["Time"])
-    
+                cont.append(df.iloc[i]["Time (rel)"])
+
     return timevec, speedvec, quickstop, halt, cont
+
 
 def speed_feedback(df):
     timevec = []
@@ -182,43 +186,48 @@ def speed_feedback(df):
     for i in range(df.shape[0]):
         hexlist = df.iloc[i]["Data (hex)"].split()
         if len(hexlist) == 2:
-            feedback = int("0x" + hexlist[1] + hexlist [0], base = 16)
+            feedback = int("0x" + hexlist[1] + hexlist[0], base=16)
             if feedback > 2**15:
                 feedback -= 2**16
-            timevec.append(df.iloc[i]["Time"])
+            timevec.append(df.iloc[i]["Time (rel)"])
             feedbackvec.append(feedback)
-            # print(df.iloc[i]["Time"],feedback)
-    return timevec,feedbackvec      
 
-def encoder_readout(df):
-    timevec=[]
-    encodervec=[]
+    return timevec, feedbackvec
+
+
+def encoder_readout(df1):
+
+    # timevec = []
+    encodervec = []
+    df = df1[["Time (abs)", "Data (hex)", "Time (rel)"]].copy()
+    df["time"] = pd.to_datetime(df["Time (abs)"])
+
+    df.drop_duplicates(subset=["time"], inplace=True)
+    df.set_index(["time"], inplace=True)
 
     for i in range(df.shape[0]):
         hexlist = df.iloc[i]["Data (hex)"].split()
-        if len(hexlist) ==4:
-            encoder= int("0x"+hexlist[3]+hexlist[2]+hexlist[1]+hexlist[0],base=16)
-            timevec.append(df.iloc[i]["Time"])
+        if len(hexlist) == 4:
+            encoder = int(
+                "0x" + hexlist[3] + hexlist[2] + hexlist[1] + hexlist[0], base=16
+            )
+            # timevec.append(df.iloc[i]["time"])
             encodervec.append(encoder)
-    return timevec,encodervec
+    df["data"] = encodervec
+    df["data"] = [x - df["data"].iloc[0] for x in df["data"]]
+    del df["Time (abs)"]
+    del df["Data (hex)"]
+    df = df.resample("ms").interpolate()
+    return df
 
-def compute_encoder_speed(timevec,encodervec):
-    encoderspeedvec = []
-    dtvec = []
-
-    for i in range(len(timevec)-1):
-        dt = timevec[i+1]-timevec[i]
-        dtvec.append(dt)
-        dx = (encodervec[i+1]-encodervec[i])*(60/3600) #rpm
-        encoderspeed=dx/dt
-        encoderspeedvec.append(encoderspeed)
-    return encoderspeedvec, dtvec    
 
 def create_relative_time(df, time_zero):
     time_rel = []
     for i in range(len(df)):
         time_rel.append(
-            datetime.strptime(df["Time (abs)"].iloc[i], "%H:%M:%S.%f").replace(datetime.now().year).timestamp()
+            datetime.strptime(df["Time (abs)"].iloc[i], "%H:%M:%S.%f")
+            .replace(datetime.now().year)
+            .timestamp()
             - time_zero
         )
     return time_rel

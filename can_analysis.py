@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import pandas as pd
 import lib
 import stateestimator
@@ -38,6 +39,7 @@ from datetime import datetime
 # filename = "./logs/0907/horizontal_5.csv"
 # filename = "./logs/0907/vertical_2.csv"
 # filename = "./logs/0907/free_3.csv"
+# filename = "./logs/0907/square.csv"
 
 # filename = "./logs/0907/horizontal_fast.csv"
 # filename = "./logs/0907/100hz.csv"
@@ -47,8 +49,14 @@ from datetime import datetime
 
 # filename = "./logs/1007/20rotationsmanually.csv"
 # filename = "./logs/1007/8rotationsfloor_360mmleft.csv"
-# filename = "./logs/1007/8rotationsonfloor_2.csv"
-filename = "./logs/1007/8rotationsbackforth_2.csv"
+
+# filename = "./logs/1007/8rotationsbackforth.csv"
+# filename = "./logs/1007/8rotationsbackforth_2.csv"
+# filename = "./logs/1007/8rotationsfloor_360mmleft.csv"
+# filename = "./logs/1007/free_2.csv"
+filename = "./logs/1007/circle.csv"
+# filename = "./logs/1007/backforth.csv"
+
 df = pd.read_csv(filename)
 
 ### Data manipulation
@@ -59,11 +67,9 @@ time_zero = (
     .timestamp()
 )  # replace the year with current year to avoid OS timestamp errors
 time_relative = lib.create_relative_time(df, time_zero)
-df["Time"] = time_relative
+df["Time (rel)"] = time_relative
 
 # split dataframe per ID
-# print(df.head())
-
 drive_right = df[df["ID (hex)"] == "202"]
 drive_left = df[df["ID (hex)"] == "201"]
 raw_values = df[df["ID (hex)"] == "185"]
@@ -75,17 +81,19 @@ speed_feedback_right = df[df["ID (hex)"] == "282"]
 encoder_l = df[df["ID (hex)"] == "1B3"]
 encoder_r = df[df["ID (hex)"] == "1B2"]
 
-
 ######### extract CAN commands
 timevec_r, speedvec_r, quickstop_r, halt_r, cont_r = lib.vel_cmnd(drive_right)
 timevec_l, speedvec_l, quickstop_l, halt_l, cont_l = lib.vel_cmnd(drive_left)
+
 timevec_speed_l, feedback_left = lib.speed_feedback(speed_feedback_left)
 timevec_speed_r, feedback_right = lib.speed_feedback(speed_feedback_right)
-timevec_encoder_left, encoder_left = lib.encoder_readout(encoder_l)
-timevec_encoder_right, encoder_right = lib.encoder_readout(encoder_r)
 
-encoder_left = [x - encoder_left[0] for x in encoder_left]
-encoder_right = [x - encoder_right[0] for x in encoder_right]
+df_encoder_left = lib.encoder_readout(encoder_l)
+df_encoder_right = lib.encoder_readout(encoder_r)
+timevec_encoder_left = df_encoder_left["Time (rel)"]
+timevec_encoder_right = df_encoder_right["Time (rel)"]
+# encoder_left = [x - encoder_left[0] for x in encoder_left]
+# encoder_right = [x - encoder_right[0] for x in encoder_right]
 
 (
     statevec,
@@ -96,29 +104,23 @@ encoder_right = [x - encoder_right[0] for x in encoder_right]
     dy_vec,
     dtheta_vec,
     ddistance_center_vec,
-    dLR_vec,
-) = stateestimator.simulate(
-    timevec_encoder_left, encoder_left, timevec_encoder_right, encoder_right
-)
+    velocity_left_vec,
+    velocity_right_vec,
+) = stateestimator.simulate(df_encoder_left, df_encoder_right)
 
 x = []
 y = []
 theta = []
 theta_deg = []
-# print(statevec)
+
 for state in statevec:
     x.append(state[0])
     y.append(state[1])
     theta.append(state[2])
     theta_deg.append(state[2] * 360 / (2 * math.pi))
 
-# Compute speeds from encoder ticks
-speedvec_left, dtvec_left = lib.compute_encoder_speed(
-    timevec_encoder_left, encoder_left
-)
-speedvec_right, dtvec_right = lib.compute_encoder_speed(
-    timevec_encoder_right, encoder_right
-)
+# plt.plot(velocity_left_vec)
+# plt.plot(velocity_right_vec)
 
 ########## RC raw stick values
 raw_timestamp, bytes = lib.raw_stick_str_to_hexstr(raw_values)
@@ -155,15 +157,63 @@ raw_drive_adjust = bytes[4]
 plotting = 0
 plotting1 = 1
 
-if 0:
-    plt.figure()
+if plotting1:
 
-    plt.plot(timevec_speed_l, feedback_left, label="feedback")
-    # plt.plot(timevec_speed_r,feedback_right)
-    plt.plot(timevec_l, speedvec_l, label="vel cmd")
+    plt.figure()
+    plt.title("x and y distances")
+    plt.plot(x, label="x")
+    plt.plot(y, label="y")
     plt.legend()
 
-if plotting:
+    plt.figure()
+    # plt.xlim([-310,1200])
+    # plt.ylim([-310,1200])
+    plt.title("Global x y coordinates")
+    plt.plot(x, y, ".")
+
+    ax = plt.gca()
+    # ax.set_ylim([-50, 50])
+    ax.set_aspect("equal")
+    plt.xlabel("x [mm]")
+    plt.ylabel("y [mm]")
+
+    plt.figure()
+    plt.title("distance left right and center")
+    plt.plot(distance_center_vec, label="d center")
+    plt.plot(distance_left_vec, label="d left")
+    plt.plot(distance_right_vec, label="d right")
+    plt.legend()
+
+    plt.figure()
+    plt.title("Angle with respect to start position")
+    plt.plot(theta_deg, label="theta [deg]")
+    plt.xlabel("")
+    plt.ylabel("theta [rad]")
+    plt.grid()
+
+    plt.figure()
+    plt.plot(dx_vec, label="dx")
+    plt.plot(dy_vec, label="dy")
+    plt.grid()
+    plt.legend()
+
+    plt.figure()
+    plt.title("encoder position absolute left")
+    plt.plot(timevec_encoder_left, df_encoder_left["data"])
+    plt.figure()
+    plt.title("encoder position absolute right")
+    plt.plot(timevec_encoder_right, df_encoder_right["data"], "-.")
+
+
+if plotting:  # speed and feedback
+    plt.figure()
+
+    plt.plot(timevec_speed_l, feedback_left, label="feedback left")
+    plt.plot(timevec_speed_r, feedback_right, label="feedback right")
+    plt.plot(timevec_l, speedvec_l, label="vel cmd left")
+    plt.plot(timevec_r, speedvec_r, label="vel cmd right")
+    plt.legend()
+
     plt.figure()  # speed command drive left
     plt.plot(timevec_l, speedvec_l)
     plt.plot(raw_timestamp, DI_left, ".r", markersize=1, label="DI left")
@@ -183,68 +233,6 @@ if plotting:
     plt.xlabel("Time [s]")
     plt.ylabel("Velocity command [RPM]")
     plt.title("Right drive")
-if plotting1:
-    plt.figure()
-    plt.title("x and y distances")
-    plt.plot(x, label="x")
-    plt.plot(y, label="y")
-    plt.legend()
-
-    plt.figure()
-    # plt.xlim([-310,1200])
-    # plt.ylim([-310,1200])
-    plt.title("Global x y coordinates")
-    plt.plot(x, y, ".")
-    ax = plt.gca()
-    ax.set_aspect("equal")
-    plt.xlabel("x [mm]")
-    plt.ylabel("y [mm]")
-
-    plt.figure()
-    plt.title("distance left right and center")
-    plt.plot(distance_center_vec, label="d center")
-    plt.plot(distance_left_vec, label="d left")
-    plt.plot(distance_right_vec, label="d right")
-    plt.legend()
-if 1:
-    plt.figure()
-    plt.title("Angle with respect to start position")
-    plt.plot(theta_deg, label="theta [deg]")
-    plt.xlabel("")
-    plt.ylabel("theta [rad]")
-    plt.grid()
-
-    plt.figure()
-    plt.plot(dx_vec, label="dx")
-    plt.plot(dy_vec, label="dy")
-    plt.grid()
-    plt.legend()
-
-    plt.figure()
-    plt.plot(ddistance_center_vec, label="ddistance center")
-    plt.plot(theta_deg, label="theta")
-    plt.plot(dLR_vec, label="dr - dl")
-    plt.legend()
-    plt.grid()
-
-    # plt.figure()
-    # plt.title("encoder position absolute left")
-    # plt.plot(timevec_encoder_left, encoder_left)
-    # plt.figure()
-    # plt.title("encoder position absolute right")
-    # plt.plot(timevec_encoder_right, encoder_right, "-.")
-
-    # plt.figure()
-    # plt.title('speed [rpm]')
-    # plt.plot(speedvec_left, label='speed left encoder')
-    # plt.plot(speedvec_right, label = 'speed encoder right')
-    # plt.legend()
-
-    plt.figure()
-    plt.title("encoder dt")
-    plt.plot(dtvec_left, label="dt left")
-    plt.plot(dtvec_right, label="dt right")
-    plt.legend()
 
 if plotting:  # byte 2, byte 3, byte 4
     plt.figure()
